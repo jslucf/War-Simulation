@@ -1,0 +1,140 @@
+---
+title: "War Simulation"
+author: "Jason Laso"
+date: "October 23, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This function shuffles and splits the deck of cards into two equal decks of 26.
+```{r}
+war.deck = function(){
+  
+  #The sampling function has issues when a number is repeated in a vector. So to create the deck, I went from 8:59 instead of doing a sequence
+  # of 2:14, 4 times. It then divides each number by 4 and takes the floor, which returns the same thing at the end, but doesn't have the issue
+  #of the "step for "not in p1" step removing duplicates.
+  deck = seq(8,59, 1)
+  
+  #Randomly take 26 cards for p1 and the other 26 for p2 in the next step
+  p1 = sample(deck, 26, replace=F)
+  p2 = deck[!(deck %in% p1)]
+  
+  #This takes the numbers 8:59 and changes them all to be between 2:14, indicating card rank
+  p1 = floor(p1/4)
+  p2 = floor(p2/4)
+  
+  #Re-shuffle p2's deck, since it was reordered in the last step
+  p2 = sample(p2, length(p2), replace=F)
+  
+  decks = list(p1,p2)
+  
+  return(decks)
+}
+```
+
+This function simulates a war. It takes 3 parameters: the two players cards and the number of down cards for the war (default is 3; i.e. put 3 cards down and draw war on 4th card).
+```{r}
+war.draw = function(p1, p2, len = 3){
+  #takes two vectors of cards and the number of down cards for each war (default is 3)
+  
+  #term for while loop to continue
+  p1.term = 0
+  
+  #number of wars in sim
+  wars = 1
+  
+  while(p1.term == 0){
+    
+    #if p1 wins the war
+    if(p1[(len +1) * wars] > p2[(len +1) * wars] ){
+      winner = "p1"
+      p1.term = 1
+      
+      #if p2 wins the war
+    } else if (p1[(len +1) * wars] < p2[(len +1) * wars] ){
+      winner = "p2"
+      p1.term = 1
+      
+      #if the war was a tie and needs to continue
+    } else{
+      wars = wars + 1
+    }
+  }
+    
+    result = list(winner, wars)
+    return(result)
+}
+```
+
+This function does a standard one card draw off the top card from each deck. If they are equal, the war function is run. If they are not, then the player with the higher up card gets both cards added to the back of his deck. The function returns the updates decks and the number of wars run in the draw.
+```{r}
+draw = function(p1, p2, war.len = 3){
+  
+  wars = 0
+  
+  #if p1's up card > p2's up card, then give him both cards at the back of his deck and then remove them from the front
+  if(p1[1] > p2[1]){
+    p1= append(p1, c(p1[1], p2[1]))
+    p1 = p1[-1]
+    p2 = p2[-1]
+  
+    #if p2's up card is higher
+  } else if(p1[1] < p2[1]){
+    
+    p2= append(p2, c(p2[1], p1[1]))
+    p1 = p1[-1]
+    p2 = p2[-1]
+    
+    #if equal, run the war.draw function
+    
+  } else{
+      #war draw
+      war = war.draw(p1, p2, war.len)
+      #total number of down cards from the war
+      down.cards = ((1+war.len) * war[[2]])
+      
+      #the exact cards used in the war by both players
+      p1.down.cards = p1[1:down.cards ]
+      p2.down.cards = p2[1:down.cards]
+      
+      #checks the 1st result of the war function to see who won
+      #if p1 won the war, then give him all the down cards from both players
+      if(war[1] == "p1"){
+        p1 = append(p1, c(p1.down.cards, p2.down.cards))
+        
+        #if p2 won the war, then give him all the down cards
+      } else{
+        p2 = append(p2, c(p2.down.cards, p1.down.cards))
+      }
+      #remove the down cards from the front of each player's deck
+      p1 = p1[-(1:down.cards)]
+      p2 = p2[-(1:down.cards)]
+      wars = war[[2]]
+  }
+  
+  return(list(p1,p2,wars))
+}
+
+```
+
+```{r}
+decks = war.deck()
+p1 = decks[[1]]
+p2 = decks[[2]]
+
+wars=c()
+
+while(any(length(p1) == c(0, 52)) == F){
+  
+  x = draw(p1, p2, 3)
+  p1 = x[[1]]
+  p2 = x[[2]]
+  wars = append(wars, x[[3]])
+}
+
+
+```
+
