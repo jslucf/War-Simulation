@@ -37,7 +37,7 @@ war.deck = function(){
 
 This function simulates a war. It takes 3 parameters: the two players cards and the number of down cards for the war (default is 3; i.e. put 3 cards down and draw war on 4th card).
 ```{r}
-war.draw = function(p1, p2, len = 3){
+war.draw = function(p1, p2, down = 3){
   #takes two vectors of cards and the number of down cards for each war (default is 3)
   
   #term for while loop to continue
@@ -48,21 +48,45 @@ war.draw = function(p1, p2, len = 3){
   
   while(p1.term == 0){
     
-    #if p1 wins the war
-    if(p1[(len +1) * wars] > p2[(len +1) * wars] ){
-      winner = "p1"
-      p1.term = 1
+    if(length(p1) >= ((down +1) * wars) & length(p2) >= ((down +1) * wars)){
       
-      #if p2 wins the war
-    } else if (p1[(len +1) * wars] < p2[(len +1) * wars] ){
-      winner = "p2"
-      p1.term = 1
-      
-      #if the war was a tie and needs to continue
+      #if p1 wins the war
+      if(p1[(down +1) * wars] > p2[(down +1) * wars] ){
+        winner = "p1"
+        p1.term = 1
+        
+        #if p2 wins the war
+      } else if (p1[(down +1) * wars] < p2[(down +1) * wars] ){
+        winner = "p2"
+        p1.term = 1
+        
+        #if the war was a tie and needs to continue
+      } else{
+        wars = wars + 1
+      }
+      #if one of the two players does not have enough down cards to run a normal war, then turn up their last card instead
     } else{
-      wars = wars + 1
+      
+      final.len = min(c(length(p1), length(p2)))
+      
+       #if p1 wins the war
+      if(p1[final.len] > p2[final.len] ){
+        winner = "p1"
+        p1.term = 1
+        
+        #if p2 wins the war
+      } else if (p1[final.len] < p2[final.len] ){
+        winner = "p2"
+        p1.term = 1
+        
+        #if the war was a tie and needs to continue
+      } else{
+        wars = wars + 1
+      }
+      
     }
-  }
+    
+  }#while
     
     result = list(winner, wars)
     return(result)
@@ -71,7 +95,7 @@ war.draw = function(p1, p2, len = 3){
 
 This function does a standard one card draw off the top card from each deck. If they are equal, the war function is run. If they are not, then the player with the higher up card gets both cards added to the back of his deck. The function returns the updates decks and the number of wars run in the draw.
 ```{r}
-draw = function(p1, p2, war.len = 3){
+draw = function(p1, p2, war.down = 3){
   
   wars = 0
   
@@ -92,9 +116,16 @@ draw = function(p1, p2, war.len = 3){
     
   } else{
       #war draw
-      war = war.draw(p1, p2, war.len)
-      #total number of down cards from the war
-      down.cards = ((1+war.len) * war[[2]])
+      war = war.draw(p1, p2, war.down)
+      
+      #total number of down cards from the war, if the deck sizes were proper
+      down.cards = ((1+war.down) * war[[2]])
+      
+      #if the deck sizes were improper for the war draw, then the algo will change the number of down cards for the length
+      #of the smaller deck, so that it will end the war on the last card
+      if(length(p1) < down.cards | length(p2) < down.cards){
+        down.cards = min(c(length(p1), length(p2)) )
+      }
       
       #the exact cards used in the war by both players
       p1.down.cards = p1[1:down.cards ]
@@ -121,20 +152,53 @@ draw = function(p1, p2, war.len = 3){
 ```
 
 ```{r}
-decks = war.deck()
-p1 = decks[[1]]
-p2 = decks[[2]]
+iter =1000
+set.seed(1)
+wars.list = list()
+```
 
-wars=c()
 
-while(any(length(p1) == c(0, 52)) == F){
+
+Simulation
+```{r}
+
+
+for(i in 1:iter){
+
+  decks = war.deck()
+  p1 = decks[[1]]
+  p2 = decks[[2]]
   
-  x = draw(p1, p2, 3)
-  p1 = x[[1]]
-  p2 = x[[2]]
-  wars = append(wars, x[[3]])
+  wars=c()
+  
+  while(any(length(p1) == c(0, 52)) == F){
+    
+    x = draw(p1, p2, 3)
+    p1 = x[[1]]
+    p2 = x[[2]]
+    wars = append(wars, x[[3]])
+  }#while
+  
+wars.list[[i]] = wars
+  
+}#for
+
+```
+
+
+```{r}
+
+results = matrix(nrow = iter, ncol = 5)
+
+for(i in 1: length(wars.list)){
+  iter.result = as.data.frame(table(wars.list[i]))
+  
+  for(col in 1:5){
+    results[i, col] = ifelse( (col-1) %in% iter.result[,1] , iter.result[iter.result$Var1 == (col - 1), "Freq"]  , 0 )
+  }
+  
 }
 
-
+results
 ```
 
